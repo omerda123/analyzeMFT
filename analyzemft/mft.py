@@ -17,7 +17,7 @@ import bitparse
 import mftutils
 
 
-def parse_record(raw_record: bytes, debug: bool = False):
+def parse_record(raw_record: bytes, debug: bool = True):
     record = {
         'filename': '',
         'notes': '',
@@ -25,8 +25,9 @@ def parse_record(raw_record: bytes, debug: bool = False):
         'datacnt': 0,
     }
 
+    print(f"raw racord {raw_record}")
+    print(f"debug {debug}")
     decode_mft_header(record, raw_record)
-    print(f"bbb {raw_record}")
 
     # HACK: Apply the NTFS fixup on a 1024 byte record.
     # Note that the fixup is only applied locally to this function.
@@ -37,8 +38,6 @@ def parse_record(raw_record: bytes, debug: bool = False):
             raw_record[512:1022],
             record['seq_attr2'],
         )
-
-    print(f"cccc {raw_record}")
     record_number = record['recordnum']
 
     if debug:
@@ -61,12 +60,7 @@ def parse_record(raw_record: bytes, debug: bool = False):
 
     # How should we preserve the multiple attributes? Do we need to preserve them all?
     while read_ptr < 1024:
-        print(f"ddd {raw_record}")
-        print(f"read ptr {read_ptr}")
-        print(f"aaaaaa {raw_record[read_ptr:]}")
-        print(type(raw_record[read_ptr:]))
-        test = raw_record[read_ptr:]
-        print(f"test {test}")
+        raw_record = bytes(raw_record, encoding='utf8')
         atr_record = decode_atr_header(raw_record[read_ptr:])
         if atr_record['type'] == 0xffffffff:  # End of attributes
             break
@@ -119,7 +113,7 @@ def parse_record(raw_record: bytes, debug: bool = False):
                 print("File name record")
             fn_record = decode_fn_attribute(raw_record[read_ptr + atr_record['soff']:])
             record['fn', record['fncnt']] = fn_record
-            if debug:
+            if debug or True:
                 print(f"Name: {fn_record['name']} ({record['fncnt']})")
             record['fncnt'] += 1
             if fn_record['crtime'] != 0:
@@ -593,13 +587,13 @@ def decode_mft_recordtype(record):
     return tmp_buffer
 
 
-def decode_atr_header(s: bytes):
+def decode_atr_header(s):
     d = {'type': struct.unpack("<L", s[:4])[0]}
     if d['type'] == 0xffffffff:
         return d
     d['len'] = struct.unpack("<L", s[4:8])[0]
-    d['res'] = struct.unpack("B", s[8])[0]
-    d['nlen'] = struct.unpack("B", s[9])[0]
+    d['res'] = struct.unpack("B", s[8:9])[0]
+    d['nlen'] = struct.unpack("B", s[9:10])[0]
     d['name_off'] = struct.unpack("<H", s[10:12])[0]
     d['flags'] = struct.unpack("<H", s[12:14])[0]
     d['id'] = struct.unpack("<H", s[14:16])[0]
@@ -649,7 +643,8 @@ def unpack_dataruns(datarun_str):
     # mftutils.hexdump(str,':',16)
 
     while True:
-        lengths.asbyte = struct.unpack("B", datarun_str[pos])[0]
+        print(f"omer {datarun_str}")
+        lengths.asbyte = struct.unpack("B", datarun_str[pos:pos+1])[0]
         pos += 1
         if lengths.asbyte == 0x00:
             break
@@ -658,6 +653,7 @@ def unpack_dataruns(datarun_str):
             error = "Datarun oddity."
             break
 
+        print(f"aaa {datarun_str}, {pos}")
         bit_len = bitparse.parse_little_endian_signed(datarun_str[pos:pos + lengths.b.lenlen])
 
         # print lengths.b.lenlen, lengths.b.offlen, bit_len

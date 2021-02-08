@@ -40,7 +40,6 @@ class MftSession:
 
     def open_mft_file(self):
         try:
-            print("opening the file")
             return open(self.mft_file_path, 'rb')
         except Exception:
             print(f"Unable to open file: {self.options.bodyfile}")
@@ -75,7 +74,6 @@ class MftSession:
             raw_record = self.mft_file.read(1024)
             yield record
 
-
     def build_filepaths(self):
         # reset the file reading
         self.mft_file.seek(0)
@@ -84,8 +82,7 @@ class MftSession:
         raw_record = self.mft_file.read(1024)
         while raw_record != "":
             minirec = {}
-            print(f"raw record {raw_record}")
-            record = mft.parse_record(raw_record)
+            record = mft.parse_record(raw_record, debug=self.debug)
             minirec['filename'] = record['filename']
             minirec['fncnt'] = record['fncnt']
             if record['fncnt'] == 1:
@@ -100,9 +97,6 @@ class MftSession:
                 if minirec.get('name') is None:
                     minirec['name'] = record['fn', record['fncnt'] - 1]['name']
             self.mft[self.num_records] = minirec
-            if self.options.progress:
-                if self.num_records % (self.mftsize / 5) == 0 and self.num_records > 0:
-                    print(f'Building Filepaths: {100.0 * self.num_records / self.mftsize}')
             self.num_records += 1
             raw_record = self.mft_file.read(1024)
         self.gen_filepaths()
