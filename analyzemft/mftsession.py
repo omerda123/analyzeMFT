@@ -14,10 +14,14 @@ import os
 import sys
 from optparse import OptionParser
 import mft
+
 SIAttributeSizeXP = 72
 SIAttributeSizeNT = 48
+
+
 class MftSession:
     """Class to describe an entire MFT processing session"""
+
     def __init__(self, mft_file_path: str, debug: bool = False, path_sep: str = '/'):
         self.mft_file_path = mft_file_path
         self.path_sep = path_sep
@@ -30,27 +34,36 @@ class MftSession:
         self.mftsize = self.get_mft_file_size()
         self.options = None
         self.mft_file = self.open_mft_file()
+
     def get_mft_file_size(self):
         return int(os.path.getsize(self.mft_file_path)) / 1024
+
     def open_mft_file(self):
         try:
+            print("opening the file")
             return open(self.mft_file_path, 'rb')
         except Exception:
             print(f"Unable to open file: {self.options.bodyfile}")
             sys.exit()
+
     @staticmethod
     def fmt_excel(date_str):
         return f'="{date_str}"'
+
     @staticmethod
     def fmt_norm(date_str):
         return date_str
+
     def process_mft_file(self):
+        print(f"omerda 2")
         self.build_filepaths()
         # reset the file reading
         self.num_records = 0
         self.mft_file.seek(0)
         raw_record = self.mft_file.read(1024)
+        print(self.mft_file)
         while raw_record != "":
+            print(raw_record)
             record = mft.parse_record(raw_record=raw_record, debug=self.debug)
             record['filename'] = self.mft[self.num_records]['filename']
             if record['ads'] > 0:
@@ -61,6 +74,8 @@ class MftSession:
             self.num_records += 1
             raw_record = self.mft_file.read(1024)
             yield record
+
+
     def build_filepaths(self):
         # reset the file reading
         self.mft_file.seek(0)
@@ -69,7 +84,8 @@ class MftSession:
         raw_record = self.mft_file.read(1024)
         while raw_record != "":
             minirec = {}
-            record = mft.parse_record(raw_record, self.options)
+            print(f"raw record {raw_record}")
+            record = mft.parse_record(raw_record)
             minirec['filename'] = record['filename']
             minirec['fncnt'] = record['fncnt']
             if record['fncnt'] == 1:
@@ -90,6 +106,7 @@ class MftSession:
             self.num_records += 1
             raw_record = self.mft_file.read(1024)
         self.gen_filepaths()
+
     def get_folder_path(self, seqnum):
         if self.debug:
             print(f"Building Folder For Record Number ({seqnum})")
@@ -118,6 +135,7 @@ class MftSession:
         parentpath = self.get_folder_path((self.mft[seqnum]['par_ref']))
         self.mft[seqnum]['filename'] = parentpath + self.path_sep + self.mft[seqnum]['name']
         return self.mft[seqnum]['filename']
+
     def gen_filepaths(self):
         for i in self.mft:
             #            if filename starts with / or ORPHAN, we're done.

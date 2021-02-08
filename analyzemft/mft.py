@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 # Author: David Kovar [dkovar <at> gmail [dot] com]
 # Name: mft.py
 #
@@ -19,7 +17,7 @@ import bitparse
 import mftutils
 
 
-def parse_record(raw_record, debug: bool = False):
+def parse_record(raw_record: bytes, debug: bool = False):
     record = {
         'filename': '',
         'notes': '',
@@ -28,6 +26,7 @@ def parse_record(raw_record, debug: bool = False):
     }
 
     decode_mft_header(record, raw_record)
+    print(f"bbb {raw_record}")
 
     # HACK: Apply the NTFS fixup on a 1024 byte record.
     # Note that the fixup is only applied locally to this function.
@@ -39,6 +38,7 @@ def parse_record(raw_record, debug: bool = False):
             record['seq_attr2'],
         )
 
+    print(f"cccc {raw_record}")
     record_number = record['recordnum']
 
     if debug:
@@ -61,7 +61,12 @@ def parse_record(raw_record, debug: bool = False):
 
     # How should we preserve the multiple attributes? Do we need to preserve them all?
     while read_ptr < 1024:
-
+        print(f"ddd {raw_record}")
+        print(f"read ptr {read_ptr}")
+        print(f"aaaaaa {raw_record[read_ptr:]}")
+        print(type(raw_record[read_ptr:]))
+        test = raw_record[read_ptr:]
+        print(f"test {test}")
         atr_record = decode_atr_header(raw_record[read_ptr:])
         if atr_record['type'] == 0xffffffff:  # End of attributes
             break
@@ -86,7 +91,7 @@ def parse_record(raw_record, debug: bool = False):
                     atr_record['nlen'],
                     atr_record['name_off'],
                 )
-            si_record = decode_si_attribute(raw_record[read_ptr + atr_record['soff']:], options.localtz)
+            si_record = decode_si_attribute(raw_record[read_ptr + atr_record['soff']:])
             record['si'] = si_record
             if debug:
                 print("++CRTime: %s\n++MTime: %s\n++ATime: %s\n++EntryTime: %s").format(
@@ -112,7 +117,7 @@ def parse_record(raw_record, debug: bool = False):
         elif atr_record['type'] == 0x30:  # File name
             if debug:
                 print("File name record")
-            fn_record = decode_fn_attribute(raw_record[read_ptr + atr_record['soff']:], options.localtz, record)
+            fn_record = decode_fn_attribute(raw_record[read_ptr + atr_record['soff']:])
             record['fn', record['fncnt']] = fn_record
             if debug:
                 print(f"Name: {fn_record['name']} ({record['fncnt']})")
@@ -145,7 +150,7 @@ def parse_record(raw_record, debug: bool = False):
         elif atr_record['type'] == 0x70:  # Volume information
             if debug:
                 print("Volume info attribute")
-            volume_info_record = decode_volume_info(raw_record[read_ptr + atr_record['soff']:], options)
+            volume_info_record = decode_volume_info(raw_record[read_ptr + atr_record['soff']:])
             record['volinfo'] = volume_info_record
 
         elif atr_record['type'] == 0x80:  # Data
@@ -216,9 +221,6 @@ def parse_record(raw_record, debug: bool = False):
             if debug:
                 print("ATRrecord->len < 0, exiting loop")
             break
-
-    if options.anomaly:
-        anomaly_detect(record)
 
     return record
 
@@ -524,7 +526,7 @@ def add_note(record, s):
         record['notes'] = "%s | %s |" % (record['notes'], s)
 
 
-def decode_mft_header(record, raw_record):
+def decode_mft_header(record: dict, raw_record):
     record['magic'] = struct.unpack("<I", raw_record[:4])[0]
     record['upd_off'] = struct.unpack("<H", raw_record[4:6])[0]
     record['upd_cnt'] = struct.unpack("<H", raw_record[6:8])[0]
@@ -591,7 +593,7 @@ def decode_mft_recordtype(record):
     return tmp_buffer
 
 
-def decode_atr_header(s):
+def decode_atr_header(s: bytes):
     d = {'type': struct.unpack("<L", s[:4])[0]}
     if d['type'] == 0xffffffff:
         return d
@@ -693,7 +695,7 @@ def decode_si_attribute(s, localtz):
     return d
 
 
-def decode_fn_attribute(s, localtz, _):
+def decode_fn_attribute(s, localtz: bool = False):
     # File name attributes can have null dates.
 
     d = {
@@ -730,7 +732,7 @@ def decode_attribute_list(s, _):
     return d
 
 
-def decode_volume_info(s, options):
+def decode_volume_info(s, debug: bool = False):
     d = {
         'f1': struct.unpack("<d", s[:8])[0], 'maj_ver': struct.unpack("B", s[8])[0],
         'min_ver': struct.unpack("B", s[9])[0], 'flags': struct.unpack("<H", s[10:12])[0],
