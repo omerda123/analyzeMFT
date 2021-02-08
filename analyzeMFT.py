@@ -5,8 +5,10 @@ try:
 except:
     from .analyzemft import mftsession
 
-if __name__ == "__main__":
-    session = mftsession.MftSession()
-    session.mft_options()
-    session.open_files()
-    session.process_mft_file()
+
+class AnalyzeMFT:
+    def __init__(self, file_path):
+        self.session = mftsession.MftSession(file_path)
+
+    def process_file(self):
+        self.session.process_mft_file()
