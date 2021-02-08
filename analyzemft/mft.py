@@ -42,23 +42,18 @@ def parse_record(raw_record, options):
     record_number = record['recordnum']
 
     if options.debug:
-        print '-->Record number: %d\n\tMagic: %s Attribute offset: %d Flags: %s Size:%d' % (
-            record_number,
-            record['magic'],
-            record['attr_off'],
-            hex(int(record['flags'])),
-            record['size'],
-        )
+        print(f"""-->Record number: {record_number}\n\tMagic: {record['magic']} Attribute offset: {record['attr_off']} 
+              Flags: {hex(int(record['flags']))} Size:{record['size']}""")
 
     if record['magic'] == 0x44414142:
         if options.debug:
-            print "BAAD MFT Record"
+            print("BAAD MFT Record")
         record['baad'] = True
         return record
 
     if record['magic'] != 0x454c4946:
         if options.debug:
-            print "Corrupt MFT Record"
+            print("Corrupt MFT Record")
         record['corrupt'] = True
         return record
 
@@ -73,17 +68,18 @@ def parse_record(raw_record, options):
 
         if atr_record['nlen'] > 0:
             record_bytes = raw_record[
-                read_ptr + atr_record['name_off']: read_ptr + atr_record['name_off'] + atr_record['nlen'] * 2]
+                           read_ptr + atr_record['name_off']: read_ptr + atr_record['name_off'] + atr_record[
+                               'nlen'] * 2]
             atr_record['name'] = record_bytes.decode('utf-16').encode('utf-8')
         else:
             atr_record['name'] = ''
 
         if options.debug:
-            print "Attribute type: %x Length: %d Res: %x" % (atr_record['type'], atr_record['len'], atr_record['res'])
+            print(f"Attribute type: {atr_record['type']} Length: atr_record['len'] Res: {atr_record['res']}")
 
         if atr_record['type'] == 0x10:  # Standard Information
             if options.debug:
-                print "Stardard Information:\n++Type: %s Length: %d Resident: %s Name Len:%d Name Offset: %d" % (
+                print("Stardard Information:\n++Type: %s Length: %d Resident: %s Name Len:%d Name Offset: %d").format(
                     hex(int(atr_record['type'])),
                     atr_record['len'],
                     atr_record['res'],
@@ -93,7 +89,7 @@ def parse_record(raw_record, options):
             si_record = decode_si_attribute(raw_record[read_ptr + atr_record['soff']:], options.localtz)
             record['si'] = si_record
             if options.debug:
-                print "++CRTime: %s\n++MTime: %s\n++ATime: %s\n++EntryTime: %s" % (
+                print("++CRTime: %s\n++MTime: %s\n++ATime: %s\n++EntryTime: %s").format(
                     si_record['crtime'].dtstr,
                     si_record['mtime'].dtstr,
                     si_record['atime'].dtstr,
@@ -102,28 +98,28 @@ def parse_record(raw_record, options):
 
         elif atr_record['type'] == 0x20:  # Attribute list
             if options.debug:
-                print "Attribute list"
+                print("Attribute list")
             if atr_record['res'] == 0:
                 al_record = decode_attribute_list(raw_record[read_ptr + atr_record['soff']:], record)
                 record['al'] = al_record
                 if options.debug:
-                    print "Name: %s" % (al_record['name'])
+                    print(f"Name: {al_record['name']}")
             else:
                 if options.debug:
-                    print "Non-resident Attribute List?"
+                    print("Non-resident Attribute List?")
                 record['al'] = None
 
         elif atr_record['type'] == 0x30:  # File name
             if options.debug:
-                print "File name record"
+                print("File name record")
             fn_record = decode_fn_attribute(raw_record[read_ptr + atr_record['soff']:], options.localtz, record)
             record['fn', record['fncnt']] = fn_record
             if options.debug:
-                print "Name: %s (%d)" % (fn_record['name'], record['fncnt'])
+                print(f"Name: {fn_record['name']} ({record['fncnt']})")
             record['fncnt'] += 1
             if fn_record['crtime'] != 0:
                 if options.debug:
-                    print "\tCRTime: %s MTime: %s ATime: %s EntryTime: %s" % (
+                    print("\tCRTime: %s MTime: %s ATime: %s EntryTime: %s").format(
                         fn_record['crtime'].dtstr,
                         fn_record['mtime'].dtstr,
                         fn_record['atime'].dtstr,
@@ -134,21 +130,21 @@ def parse_record(raw_record, options):
             object_id_record = decode_object_id(raw_record[read_ptr + atr_record['soff']:])
             record['objid'] = object_id_record
             if options.debug:
-                print "Object ID"
+                print("Object ID")
 
         elif atr_record['type'] == 0x50:  # Security descriptor
             record['sd'] = True
             if options.debug:
-                print "Security descriptor"
+                print("Security descriptor")
 
         elif atr_record['type'] == 0x60:  # Volume name
             record['volname'] = True
             if options.debug:
-                print "Volume name"
+                print("Volume name")
 
         elif atr_record['type'] == 0x70:  # Volume information
             if options.debug:
-                print "Volume info attribute"
+                print("Volume info attribute")
             volume_info_record = decode_volume_info(raw_record[read_ptr + atr_record['soff']:], options)
             record['volinfo'] = volume_info_record
 
@@ -168,57 +164,57 @@ def parse_record(raw_record, options):
             record['datacnt'] += 1
 
             if options.debug:
-                print "Data attribute"
+                print("Data attribute")
 
         elif atr_record['type'] == 0x90:  # Index root
             record['indexroot'] = True
             if options.debug:
-                print "Index root"
+                print("Index root")
 
         elif atr_record['type'] == 0xA0:  # Index allocation
             record['indexallocation'] = True
             if options.debug:
-                print "Index allocation"
+                print("Index allocation")
 
         elif atr_record['type'] == 0xB0:  # Bitmap
             record['bitmap'] = True
             if options.debug:
-                print "Bitmap"
+                print("Bitmap")
 
         elif atr_record['type'] == 0xC0:  # Reparse point
             record['reparsepoint'] = True
             if options.debug:
-                print "Reparse point"
+                print("Reparse point")
 
         elif atr_record['type'] == 0xD0:  # EA Information
             record['eainfo'] = True
             if options.debug:
-                print "EA Information"
+                print("EA Information")
 
         elif atr_record['type'] == 0xE0:  # EA
             record['ea'] = True
             if options.debug:
-                print "EA"
+                print("EA")
 
         elif atr_record['type'] == 0xF0:  # Property set
             record['propertyset'] = True
             if options.debug:
-                print "Property set"
+                print("Property set")
 
         elif atr_record['type'] == 0x100:  # Logged utility stream
             record['loggedutility'] = True
             if options.debug:
-                print "Logged utility stream"
+                print("Logged utility stream")
 
         else:
             if options.debug:
-                print "Found an unknown attribute"
+                print("Found an unknown attribute")
 
         if atr_record['len'] > 0:
             read_ptr = read_ptr + atr_record['len']
         else:
             if options.debug:
-                print "ATRrecord->len < 0, exiting loop"
+                print("ATRrecord->len < 0, exiting loop")
             break
 
     if options.anomaly:
@@ -396,18 +392,19 @@ def mft_to_csv(record, ret_header, options):
 # MD5|name|inode|mode_as_string|UID|GID|size|atime|mtime|ctime|crtime
 def mft_to_json(record):
     json_object = {}
-    
+
     if record.has_key('si'):
-        #print "Make Me JSON %s, %s, %s , %s, %s"  % (str(record['recordnum']), str(record['filename']), str(record['magic']), str(record['size']), record['si']['mtime'].dtstr)
+        # print "Make Me JSON %s, %s, %s , %s, %s"  % (str(record['recordnum']), str(record['filename']), str(record['magic']), str(record['size']), record['si']['mtime'].dtstr)
         json_object['filename'] = str(record['filename'])
         json_object['recordnumber'] = str(record['recordnum'])
         json_object['recordtype'] = str(record['recordtype'])
     else:
-        #print str(record['recordnum'])  + str(record['filename'])
+        # print str(record['recordnum'])  + str(record['filename'])
         json_object['filename'] = "nFn"
-        json_object['recordnumber'] = str(record['recordnum'])        
-        
+        json_object['recordnumber'] = str(record['recordnum'])
+
     return json_object
+
 
 def mft_to_body(record, full, std):
     """ Return a MFT record in bodyfile format"""
@@ -741,12 +738,12 @@ def decode_volume_info(s, options):
     }
 
     if options.debug:
-        print "+Volume Info"
-        print "++F1%d" % d['f1']
-        print "++Major Version: %d" % d['maj_ver']
-        print "++Minor Version: %d" % d['min_ver']
-        print "++Flags: %d" % d['flags']
-        print "++F2: %d" % d['f2']
+        print("""+Volume Info
+              ++F1%d" % d['f1']
+              ++Major Version: %d" % d['maj_ver']
+              ++Minor Version: %d" % d['min_ver']
+              ++Flags: %d" % d['flags']
+              ++F2: %d" % d['f2']""")
 
     return d
 
@@ -809,7 +806,8 @@ def anomaly_detect(record):
         # Check for STD access times that are after the STD modify and STD create times.  For systems with last access 
         # timestamp disabled (Windows Vista+), this is an indication of a file moved from one volume to another.
         try:
-            if record['si']['atime'].dt > record['si']['mtime'].dt and record['si']['atime'].dt > record['si']['crtime'].dt:
+            if record['si']['atime'].dt > record['si']['mtime'].dt and record['si']['atime'].dt > record['si'][
+                'crtime'].dt:
                 record['possible-volmove'] = True
         except:
             pass
