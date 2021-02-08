@@ -12,3 +12,8 @@ class AnalyzeMFT:
 
     def process_file(self):
         self.session.process_mft_file()
+
+
+if __name__ == "__main__":
+    parser = AnalyzeMFT("$MFT")
+    parser.process_file()
