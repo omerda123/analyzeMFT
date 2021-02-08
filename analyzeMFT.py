@@ -7,8 +7,8 @@ except:
 
 
 class AnalyzeMFT:
-    def __init__(self, file_path):
-        self.session = mftsession.MftSession(file_path)
+    def __init__(self, mft_file_path, debug: bool = False):
+        self.session = mftsession.MftSession(mft_file_path=mft_file_path, debug=debug)
 
     def process_file(self):
         self.session.process_mft_file()

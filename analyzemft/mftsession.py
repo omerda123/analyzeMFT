@@ -18,9 +18,10 @@ SIAttributeSizeXP = 72
 SIAttributeSizeNT = 48
 class MftSession:
     """Class to describe an entire MFT processing session"""
-    def __init__(self, mft_file_path: str, path_sep: str = '/'):
+    def __init__(self, mft_file_path: str, debug: bool = False, path_sep: str = '/'):
         self.mft_file_path = mft_file_path
         self.path_sep = path_sep
+        self.debug = debug
         self.num_records = 0
         self.mft = {}
         self.fullmft = {}
@@ -50,7 +51,7 @@ class MftSession:
         self.mft_file.seek(0)
         raw_record = self.mft_file.read(1024)
         while raw_record != "":
-            record = mft.parse_record(raw_record, self.options)
+            record = mft.parse_record(raw_record=raw_record, debug=self.debug)
             record['filename'] = self.mft[self.num_records]['filename']
             if record['ads'] > 0:
                 for i in range(0, record['ads']):
