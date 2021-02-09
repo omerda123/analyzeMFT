@@ -80,8 +80,9 @@ class MftSession:
         self.num_records = 0
         # 1024 is valid for current version of Windows but should really get this value from somewhere
         raw_record = self.mft_file.read(1024)
-        while raw_record != "":
+        while raw_record:
             minirec = {}
+            print(self.num_records)
             record = mft.parse_record(raw_record, debug=self.debug)
             minirec['filename'] = record['filename']
             minirec['fncnt'] = record['fncnt']

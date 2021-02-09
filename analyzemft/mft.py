@@ -521,6 +521,9 @@ def add_note(record, s):
 
 
 def decode_mft_header(record: dict, raw_record):
+    print(f"decode_mft_header raw_record {type(raw_record)}, {raw_record}")
+    if not raw_record:
+        return
     record['magic'] = struct.unpack("<I", raw_record[:4])[0]
     record['upd_off'] = struct.unpack("<H", raw_record[4:6])[0]
     record['upd_cnt'] = struct.unpack("<H", raw_record[6:8])[0]
