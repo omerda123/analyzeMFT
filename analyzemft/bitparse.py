@@ -22,7 +22,6 @@ def parse_little_endian_signed_negative(buf):
 
 def parse_little_endian_signed(buf):
     try:
-        print(f"zzz {buf} {type(buf)} {type(buf[-1])}. {buf[-1]}")
         if not buf[-1] & 0b10000000:
             return parse_little_endian_signed_positive(buf)
         else:

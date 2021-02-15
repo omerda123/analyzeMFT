@@ -22,15 +22,14 @@ SIAttributeSizeNT = 48
 class MftSession:
     """Class to describe an entire MFT processing session"""
 
-    def __init__(self, mft_file_path: str, debug: bool = False, path_sep: str = '/'):
+    def __init__(self, mft_file_path: str, allow_debug: bool, path_sep: str = '/'):
         self.mft_file_path = mft_file_path
         self.path_sep = path_sep
-        self.debug = debug
+        self.debug = allow_debug
         self.num_records = 0
         self.mft = {}
         self.fullmft = {}
         self.folders = {}
-        self.debug = False
         self.mftsize = self.get_mft_file_size()
         self.options = None
         self.mft_file = self.open_mft_file()
@@ -54,15 +53,12 @@ class MftSession:
         return date_str
 
     def process_mft_file(self):
-        print(f"omerda 2")
         self.build_filepaths()
         # reset the file reading
         self.num_records = 0
         self.mft_file.seek(0)
         raw_record = self.mft_file.read(1024)
-        print(self.mft_file)
         while raw_record != "":
-            print(raw_record)
             record = mft.parse_record(raw_record=raw_record, debug=self.debug)
             record['filename'] = self.mft[self.num_records]['filename']
             if record['ads'] > 0:
@@ -82,7 +78,6 @@ class MftSession:
         raw_record = self.mft_file.read(1024)
         while raw_record:
             minirec = {}
-            print(self.num_records)
             record = mft.parse_record(raw_record, debug=self.debug)
             minirec['filename'] = record['filename']
             minirec['fncnt'] = record['fncnt']

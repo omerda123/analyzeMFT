@@ -25,8 +25,6 @@ def parse_record(raw_record: bytes, debug: bool = True):
         'datacnt': 0,
     }
 
-    print(f"raw racord {raw_record}")
-    print(f"debug {debug}")
     decode_mft_header(record, raw_record)
 
     # HACK: Apply the NTFS fixup on a 1024 byte record.
@@ -521,7 +519,6 @@ def add_note(record, s):
 
 
 def decode_mft_header(record: dict, raw_record):
-    print(f"decode_mft_header raw_record {type(raw_record)}, {raw_record}")
     if not raw_record:
         return
     record['magic'] = struct.unpack("<I", raw_record[:4])[0]
@@ -646,7 +643,6 @@ def unpack_dataruns(datarun_str):
     # mftutils.hexdump(str,':',16)
 
     while True:
-        print(f"omer {datarun_str}")
         lengths.asbyte = struct.unpack("B", datarun_str[pos:pos+1])[0]
         pos += 1
         if lengths.asbyte == 0x00:
@@ -656,7 +652,6 @@ def unpack_dataruns(datarun_str):
             error = "Datarun oddity."
             break
 
-        print(f"aaa {datarun_str}, {pos}")
         bit_len = bitparse.parse_little_endian_signed(datarun_str[pos:pos + lengths.b.lenlen])
 
         # print lengths.b.lenlen, lengths.b.offlen, bit_len
