@@ -30,12 +30,13 @@ def parse_record(raw_record: bytes, debug: bool = True):
     # HACK: Apply the NTFS fixup on a 1024 byte record.
     # Note that the fixup is only applied locally to this function.
     if record['seq_number'] == raw_record[510:512] and record['seq_number'] == raw_record[1022:1024]:
-        raw_record = "%s%s%s%s" % (
-            raw_record[:510],
-            record['seq_attr1'],
-            raw_record[512:1022],
-            record['seq_attr2'],
-        )
+        # raw_record = "%s%s%s%s" % (
+        #     raw_record[:510],
+        #     record['seq_attr1'],
+        #     raw_record[512:1022],
+        #     record['seq_attr2'],
+        # )
+        raw_record = raw_record[:510] + record['seq_attr1'] + raw_record[512:1022] + record['seq_attr2']
     record_number = record['recordnum']
 
     if debug:
@@ -58,7 +59,6 @@ def parse_record(raw_record: bytes, debug: bool = True):
 
     # How should we preserve the multiple attributes? Do we need to preserve them all?
     while read_ptr < 1024:
-        raw_record = bytes(raw_record, encoding='utf8')
         atr_record = decode_atr_header(raw_record[read_ptr:])
         if atr_record['type'] == 0xffffffff:  # End of attributes
             break
@@ -76,22 +76,11 @@ def parse_record(raw_record: bytes, debug: bool = True):
 
         if atr_record['type'] == 0x10:  # Standard Information
             if debug:
-                print("Stardard Information:\n++Type: %s Length: %d Resident: %s Name Len:%d Name Offset: %d").format(
-                    hex(int(atr_record['type'])),
-                    atr_record['len'],
-                    atr_record['res'],
-                    atr_record['nlen'],
-                    atr_record['name_off'],
-                )
+                print(f"Stardard Information:\n++Type: {hex(int(atr_record['type']))} Length: {atr_record['len']} Resident: {atr_record['res']} Name Len:{atr_record['nlen']} Name Offset: {atr_record['name_off']}")
             si_record = decode_si_attribute(raw_record[read_ptr + atr_record['soff']:])
             record['si'] = si_record
             if debug:
-                print("++CRTime: %s\n++MTime: %s\n++ATime: %s\n++EntryTime: %s").format(
-                    si_record['crtime'].dtstr,
-                    si_record['mtime'].dtstr,
-                    si_record['atime'].dtstr,
-                    si_record['ctime'].dtstr,
-                )
+                print(f"++CRTime: {si_record['crtime'].dtstr}\n++MTime: {si_record['mtime'].dtstr}\n++ATime: {si_record['atime'].dtstr}\n++EntryTime: {si_record['ctime'].dtstr}")
 
         elif atr_record['type'] == 0x20:  # Attribute list
             if debug:
@@ -111,17 +100,12 @@ def parse_record(raw_record: bytes, debug: bool = True):
                 print("File name record")
             fn_record = decode_fn_attribute(raw_record[read_ptr + atr_record['soff']:])
             record['fn', record['fncnt']] = fn_record
-            if debug or True:
+            if debug:
                 print(f"Name: {fn_record['name']} ({record['fncnt']})")
             record['fncnt'] += 1
             if fn_record['crtime'] != 0:
                 if debug:
-                    print("\tCRTime: %s MTime: %s ATime: %s EntryTime: %s").format(
-                        fn_record['crtime'].dtstr,
-                        fn_record['mtime'].dtstr,
-                        fn_record['atime'].dtstr,
-                        fn_record['ctime'].dtstr,
-                    )
+                    print(f"\tCRTime: {fn_record['crtime'].dtstr} MTime: {fn_record['mtime'].dtstr} ATime: {fn_record['atime'].dtstr} EntryTime: {fn_record['ctime'].dtstr}")
 
         elif atr_record['type'] == 0x40:  # Object ID
             object_id_record = decode_object_id(raw_record[read_ptr + atr_record['soff']:])
@@ -593,15 +577,17 @@ def decode_atr_header(s):
         return d
     d['len'] = struct.unpack("<L", s[4:8])[0]
     d['res'] = struct.unpack("B", s[8:9])[0]
-    d['nlen'] = struct.unpack("B", s[9:10])[0]
+    if struct.unpack("B", bytes([s[9]]))[0] != struct.unpack("B", s[9:10])[0]:
+        print(f"helpppppp I did a huge mistake")
+    d['nlen'] = struct.unpack("B", bytes([s[9]]))[0]
     d['name_off'] = struct.unpack("<H", s[10:12])[0]
     d['flags'] = struct.unpack("<H", s[12:14])[0]
     d['id'] = struct.unpack("<H", s[14:16])[0]
     if d['res'] == 0:
         d['ssize'] = struct.unpack("<L", s[16:20])[0]  # dwLength
         d['soff'] = struct.unpack("<H", s[20:22])[0]  # wAttrOffset
-        d['idxflag'] = struct.unpack("B", s[22])[0]  # uchIndexedTag
-        _ = struct.unpack("B", s[23])[0]  # Padding
+        d['idxflag'] = struct.unpack("B", s[21:22])[0]  # uchIndexedTag
+        _ = struct.unpack("B", s[22:23])[0]  # Padding
     else:
         # d['start_vcn'] = struct.unpack("<Lxxxx",s[16:24])[0]    # n64StartVCN
         # d['last_vcn'] = struct.unpack("<Lxxxx",s[24:32])[0]     # n64EndVCN
@@ -674,7 +660,7 @@ def unpack_dataruns(datarun_str):
     return numruns, dataruns, error
 
 
-def decode_si_attribute(s, localtz):
+def decode_si_attribute(s, localtz= False):
     d = {
         'crtime': mftutils.WindowsTime(struct.unpack("<L", s[:4])[0], struct.unpack("<L", s[4:8])[0], localtz),
         'mtime': mftutils.WindowsTime(struct.unpack("<L", s[8:12])[0], struct.unpack("<L", s[12:16])[0], localtz),
@@ -699,8 +685,8 @@ def decode_fn_attribute(s, localtz: bool = False):
         'ctime': mftutils.WindowsTime(struct.unpack("<L", s[24:28])[0], struct.unpack("<L", s[28:32])[0], localtz),
         'atime': mftutils.WindowsTime(struct.unpack("<L", s[32:36])[0], struct.unpack("<L", s[36:40])[0], localtz),
         'alloc_fsize': struct.unpack("<q", s[40:48])[0], 'real_fsize': struct.unpack("<q", s[48:56])[0],
-        'flags': struct.unpack("<d", s[56:64])[0], 'nlen': struct.unpack("B", s[64])[0],
-        'nspace': struct.unpack("B", s[65])[0],
+        'flags': struct.unpack("<d", s[56:64])[0], 'nlen': struct.unpack("B", s[63:64])[0],
+        'nspace': struct.unpack("B", s[64:65])[0],
     }
 
     attr_bytes = s[66:66 + d['nlen'] * 2]
@@ -715,7 +701,7 @@ def decode_fn_attribute(s, localtz: bool = False):
 def decode_attribute_list(s, _):
     d = {
         'type': struct.unpack("<I", s[:4])[0], 'len': struct.unpack("<H", s[4:6])[0],
-        'nlen': struct.unpack("B", s[6])[0], 'f1': struct.unpack("B", s[7])[0],
+        'nlen': struct.unpack("B", s[5:6])[0], 'f1': struct.unpack("B", s[6:7])[0],
         'start_vcn': struct.unpack("<d", s[8:16])[0], 'file_ref': struct.unpack("<Lxx", s[16:22])[0],
         'seq': struct.unpack("<H", s[22:24])[0], 'id': struct.unpack("<H", s[24:26])[0],
     }
@@ -728,8 +714,8 @@ def decode_attribute_list(s, _):
 
 def decode_volume_info(s, debug: bool = False):
     d = {
-        'f1': struct.unpack("<d", s[:8])[0], 'maj_ver': struct.unpack("B", s[8])[0],
-        'min_ver': struct.unpack("B", s[9])[0], 'flags': struct.unpack("<H", s[10:12])[0],
+        'f1': struct.unpack("<d", s[:8])[0], 'maj_ver': struct.unpack("B", s[7:8])[0],
+        'min_ver': struct.unpack("B", s[8:9])[0], 'flags': struct.unpack("<H", s[10:12])[0],
         'f2': struct.unpack("<I", s[12:16])[0],
     }
 

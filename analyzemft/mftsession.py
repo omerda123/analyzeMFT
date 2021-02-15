@@ -65,7 +65,7 @@ class MftSession:
                 for i in range(0, record['ads']):
                     #                         print "ADS: %s" % (record['data_name', i])
                     record_ads = record.copy()
-                    record_ads['filename'] = record['filename'] + ':' + record['data_name', i]
+                    record_ads['filename'] = record['filename'] + ':' + str(record['data_name', i])
             self.num_records += 1
             raw_record = self.mft_file.read(1024)
             yield record
@@ -123,7 +123,10 @@ class MftSession:
             return self.mft[seqnum]['filename']
         # We're not at the top of the tree and we've not hit an error
         parentpath = self.get_folder_path((self.mft[seqnum]['par_ref']))
-        self.mft[seqnum]['filename'] = parentpath + self.path_sep + self.mft[seqnum]['name']
+        try:
+            self.mft[seqnum]['filename'] = parentpath + self.path_sep + str(self.mft[seqnum]['name'])
+        except Exception as e:
+            print(f"unable to concat {parentpath}({type(parentpath)}) + {self.path_sep}({type(self.path_sep)}) + {self.mft[seqnum]['name']} ({type(self.mft[seqnum]['name'])})")
         return self.mft[seqnum]['filename']
 
     def gen_filepaths(self):
@@ -131,6 +134,7 @@ class MftSession:
             #            if filename starts with / or ORPHAN, we're done.
             #            else get filename of parent, add it to ours, and we're done.
             # If we've not already calculated the full path ....
+            # print(f"omerda {i}")
             if (self.mft[i]['filename']) == '':
                 if self.mft[i]['fncnt'] > 0:
                     self.get_folder_path(i)
