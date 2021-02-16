@@ -577,8 +577,6 @@ def decode_atr_header(s):
         return d
     d['len'] = struct.unpack("<L", s[4:8])[0]
     d['res'] = struct.unpack("B", s[8:9])[0]
-    if struct.unpack("B", bytes([s[9]]))[0] != struct.unpack("B", s[9:10])[0]:
-        print(f"helpppppp I did a huge mistake")
     d['nlen'] = struct.unpack("B", bytes([s[9]]))[0]
     d['name_off'] = struct.unpack("<H", s[10:12])[0]
     d['flags'] = struct.unpack("<H", s[12:14])[0]

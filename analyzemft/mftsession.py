@@ -14,6 +14,7 @@ import os
 import sys
 from optparse import OptionParser
 import mft
+import chardet
 
 SIAttributeSizeXP = 72
 SIAttributeSizeNT = 48
@@ -39,9 +40,9 @@ class MftSession:
 
     def open_mft_file(self):
         try:
-            return open(self.mft_file_path, 'rb')
-        except Exception:
-            print(f"Unable to open file: {self.options.bodyfile}")
+            return open(self.mft_file_path, 'r', encoding="ISO-8859-15", newline="")
+        except Exception as e:
+            print(f"Unable to open file: {e}")
             sys.exit()
 
     @staticmethod
@@ -57,7 +58,8 @@ class MftSession:
         # reset the file reading
         self.num_records = 0
         self.mft_file.seek(0)
-        raw_record = self.mft_file.read(1024)
+        raw_record = bytes(self.mft_file.read(1024), encoding="ISO-8859-15")
+        print(f"encoding is {chardet.detect(raw_record)}")
         while raw_record != "":
             record = mft.parse_record(raw_record=raw_record, debug=self.debug)
             record['filename'] = self.mft[self.num_records]['filename']
@@ -67,7 +69,7 @@ class MftSession:
                     record_ads = record.copy()
                     record_ads['filename'] = record['filename'] + ':' + str(record['data_name', i])
             self.num_records += 1
-            raw_record = self.mft_file.read(1024)
+            raw_record = bytes(self.mft_file.read(1024), encoding="ISO-8859-15")
             yield record
 
     def build_filepaths(self):
@@ -75,7 +77,7 @@ class MftSession:
         self.mft_file.seek(0)
         self.num_records = 0
         # 1024 is valid for current version of Windows but should really get this value from somewhere
-        raw_record = self.mft_file.read(1024)
+        raw_record = bytes(self.mft_file.read(1024), encoding="ISO-8859-15")
         while raw_record:
             minirec = {}
             record = mft.parse_record(raw_record, debug=self.debug)
@@ -94,7 +96,7 @@ class MftSession:
                     minirec['name'] = record['fn', record['fncnt'] - 1]['name']
             self.mft[self.num_records] = minirec
             self.num_records += 1
-            raw_record = self.mft_file.read(1024)
+            raw_record = bytes(self.mft_file.read(1024), encoding="ISO-8859-15")
         self.gen_filepaths()
 
     def get_folder_path(self, seqnum):

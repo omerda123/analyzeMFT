@@ -5,5 +5,5 @@ if __name__ == '__main__':
     # parser.build_filepaths()
     a = parser.process_mft_file()
 
-    # for row in a:
-    #     print(f"omerda row {row}")
+    for row in a:
+        print(f"omerda row {row}")
