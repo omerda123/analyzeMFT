@@ -32,15 +32,13 @@ class MftSession:
         self.fullmft = {}
         self.folders = {}
         self.mftsize = self.get_mft_file_size()
-        self.options = None
-        self.mft_file = self.open_mft_file()
 
     def get_mft_file_size(self):
         return int(os.path.getsize(self.mft_file_path)) / 1024
 
     def open_mft_file(self):
         try:
-            return open(self.mft_file_path, 'r', encoding="ISO-8859-15", newline="")
+            self.file_mft = open(self.mft_file_path, 'rb')
         except Exception as e:
             print(f"Unable to open file: {e}")
             sys.exit()
@@ -53,12 +51,32 @@ class MftSession:
     def fmt_norm(date_str):
         return date_str
 
+    def sizecheck(self):
+
+        # The number of records in the MFT is the size of the MFT / 1024
+        self.mftsize = os.path.getsize(self.mft_file_path) / 1024
+
+        # The size of the full MFT is approximately the number of records * the avg record size
+        # Avg record size was determined empirically using some test data
+        sizeinbytes = self.mftsize * 4500
+
+        try:
+            arr = []
+            for i in range(0, int(sizeinbytes / 10)):
+                arr.append(1)
+
+        except MemoryError:
+            print("Error: Not enough memory to store MFT in memory. Try running again without -s option")
+            sys.exit()
+
     def process_mft_file(self):
+        self.sizecheck()
+
         self.build_filepaths()
         # reset the file reading
         self.num_records = 0
-        self.mft_file.seek(0)
-        raw_record = bytes(self.mft_file.read(1024), encoding="ISO-8859-15")
+        self.file_mft.seek(0)
+        raw_record = self.file_mft.read(1024)
         print(f"encoding is {chardet.detect(raw_record)}")
         while raw_record != "":
             record = mft.parse_record(raw_record=raw_record, debug=self.debug)
@@ -69,15 +87,16 @@ class MftSession:
                     record_ads = record.copy()
                     record_ads['filename'] = record['filename'] + ':' + str(record['data_name', i])
             self.num_records += 1
-            raw_record = bytes(self.mft_file.read(1024), encoding="ISO-8859-15")
+            raw_record = self.file_mft.read(1024)
             yield record
 
     def build_filepaths(self):
         # reset the file reading
-        self.mft_file.seek(0)
+        self.file_mft.seek(0)
         self.num_records = 0
+
         # 1024 is valid for current version of Windows but should really get this value from somewhere
-        raw_record = bytes(self.mft_file.read(1024), encoding="ISO-8859-15")
+        raw_record = self.file_mft.read(1024)
         while raw_record:
             minirec = {}
             record = mft.parse_record(raw_record, debug=self.debug)
@@ -96,39 +115,33 @@ class MftSession:
                     minirec['name'] = record['fn', record['fncnt'] - 1]['name']
             self.mft[self.num_records] = minirec
             self.num_records += 1
-            raw_record = bytes(self.mft_file.read(1024), encoding="ISO-8859-15")
+            raw_record = self.file_mft.read(1024)
         self.gen_filepaths()
 
     def get_folder_path(self, seqnum):
-        if self.debug:
-            print(f"Building Folder For Record Number ({seqnum})")
         if seqnum not in self.mft:
             return 'Orphan'
+
         # If we've already figured out the path name, just return it
         if (self.mft[seqnum]['filename']) != '':
             return self.mft[seqnum]['filename']
-        try:
-            # if (self.mft[seqnum]['fn',0]['par_ref'] == 0) or
-            # (self.mft[seqnum]['fn',0]['par_ref'] == 5):  # There should be no seq
-            # number 0, not sure why I had that check in place.
-            if self.mft[seqnum]['par_ref'] == 5:  # Seq number 5 is "/", root of the directory
-                self.mft[seqnum]['filename'] = self.path_sep + self.mft[seqnum]['name']
-                return self.mft[seqnum]['filename']
-        except:  # If there was an error getting the parent's sequence number, then there is no FN record
-            self.mft[seqnum]['filename'] = 'NoFNRecord'
+
+        # if (self.mft[seqnum]['fn',0]['par_ref'] == 0) or
+        # (self.mft[seqnum]['fn',0]['par_ref'] == 5):  # There should be no seq
+        # number 0, not sure why I had that check in place.
+        if self.mft[seqnum]['par_ref'] == 5:  # Seq number 5 is "/", root of the directory
+            self.mft[seqnum]['filename'] = self.path_sep + self.mft[seqnum]['name'].decode("utf-8")
             return self.mft[seqnum]['filename']
+
         # Self referential parent sequence number. The filename becomes a NoFNRecord note
         if (self.mft[seqnum]['par_ref']) == seqnum:
-            if self.debug:
-                print(f"Error, self-referential, while trying to determine path for seqnum {seqnum}")
-            self.mft[seqnum]['filename'] = 'ORPHAN' + self.path_sep + self.mft[seqnum]['name']
+            self.mft[seqnum]['filename'] = 'ORPHAN' + self.path_sep + self.mft[seqnum]['name'].decode("utf-8")
             return self.mft[seqnum]['filename']
+
         # We're not at the top of the tree and we've not hit an error
         parentpath = self.get_folder_path((self.mft[seqnum]['par_ref']))
-        try:
-            self.mft[seqnum]['filename'] = parentpath + self.path_sep + str(self.mft[seqnum]['name'])
-        except Exception as e:
-            print(f"unable to concat {parentpath}({type(parentpath)}) + {self.path_sep}({type(self.path_sep)}) + {self.mft[seqnum]['name']} ({type(self.mft[seqnum]['name'])})")
+        self.mft[seqnum]['filename'] = parentpath + self.path_sep + self.mft[seqnum]['name'].decode("utf-8")
+
         return self.mft[seqnum]['filename']
 
     def gen_filepaths(self):

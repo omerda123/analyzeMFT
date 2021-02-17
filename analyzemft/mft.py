@@ -683,8 +683,8 @@ def decode_fn_attribute(s, localtz: bool = False):
         'ctime': mftutils.WindowsTime(struct.unpack("<L", s[24:28])[0], struct.unpack("<L", s[28:32])[0], localtz),
         'atime': mftutils.WindowsTime(struct.unpack("<L", s[32:36])[0], struct.unpack("<L", s[36:40])[0], localtz),
         'alloc_fsize': struct.unpack("<q", s[40:48])[0], 'real_fsize': struct.unpack("<q", s[48:56])[0],
-        'flags': struct.unpack("<d", s[56:64])[0], 'nlen': struct.unpack("B", s[63:64])[0],
-        'nspace': struct.unpack("B", s[64:65])[0],
+        'flags': struct.unpack("<d", s[56:64])[0], 'nlen': s[64],
+        'nspace': s[65],
     }
 
     attr_bytes = s[66:66 + d['nlen'] * 2]
